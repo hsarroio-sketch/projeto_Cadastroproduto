@@ -1,0 +1,308 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Leitor de Produto via Webcam</title>
+  
+  <!-- Biblioteca de escaneamento via CDN -->
+  <script src="https://unpkg.com/html5-qrcode" type="text/javascript"></script>
+
+  <style>
+    body {
+      font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+      background-color: #121212;
+      color: #e0e0e0;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      min-height: 100vh;
+      margin: 0;
+      padding: 20px;
+    }
+
+    h2 {
+      margin-bottom: 5px;
+      color: #ffffff;
+    }
+
+    .subtitle {
+      color: #888;
+      margin-bottom: 25px;
+      text-align: center;
+      max-width: 400px;
+    }
+
+    /* Container do scanner */
+    .scanner-wrapper {
+      position: relative;
+      width: 100%;
+      max-width: 500px;
+      aspect-ratio: 4 / 3;
+      border-radius: 12px;
+      overflow: hidden;
+      border: 3px solid #333;
+      background-color: #000;
+      box-shadow: 0 10px 30px rgba(0, 0, 0, 0.5);
+    }
+
+    #reader {
+      width: 100% !important;
+      height: 100% !important;
+      border: none !important;
+    }
+
+    #reader * {
+      border: none !important;
+    }
+
+    /* --- MÁSCARA E RETÂNGULO DE ORIENTAÇÃO --- */
+    .scanner-overlay {
+      position: absolute;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 100%;
+      z-index: 50;
+      pointer-events: none;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      /* Escurece as bordas externas para focar no centro */
+      background: rgba(0, 0, 0, 0.4); 
+    }
+
+    /* O Retângulo Guia */
+    .target-box {
+      position: relative;
+      width: 350px; /* Largura ideal para o código de barras */
+      height: 150px; /* Altura ideal para o código de barras */
+      border-radius: 8px;
+      box-shadow: 0 0 0 9999px rgba(0, 0, 0, 0.5); /* Recorte escuro ao redor */
+      transition: border-color 0.2s ease;
+    }
+
+    /* Cantoneiras para destacar visualmente o retângulo */
+    .target-box::before, .target-box::after {
+      content: '';
+      position: absolute;
+      width: 20px;
+      height: 20px;
+      pointer-events: none;
+    }
+
+    /* Cantos esquerdos (superior e inferior) */
+    .target-box::before {
+      top: -2px;
+      left: -2px;
+      border-top: 4px solid #fff;
+      border-left: 4px solid #fff;
+    }
+
+    /* Cantos direitos (superior e inferior) */
+    .target-box::after {
+      bottom: -2px;
+      right: -2px;
+      border-bottom: 4px solid #fff;
+      border-right: 4px solid #fff;
+    }
+
+    /* Adicionando cantoneiras adicionais */
+    .corner-top-right {
+      position: absolute;
+      top: -2px;
+      right: -2px;
+      width: 20px;
+      height: 20px;
+      border-top: 4px solid #fff;
+      border-right: 4px solid #fff;
+    }
+
+    .corner-bottom-left {
+      position: absolute;
+      bottom: -2px;
+      left: -2px;
+      width: 20px;
+      height: 20px;
+      border-bottom: 4px solid #fff;
+      border-left: 4px solid #fff;
+    }
+
+    /* Linha de Orientação Dinâmica (dentro do retângulo) */
+    .guide-line {
+      position: absolute;
+      top: 50%;
+      left: 5%;
+      width: 90%;
+      height: 4px;
+      z-index: 100;
+      transform: translateY(-50%);
+      border-radius: 2px;
+      transition: background-color 0.15s ease, box-shadow 0.15s ease;
+    }
+
+    /* Vermelho: Procurando código */
+    .guide-line.searching {
+      background-color: #ff3333;
+      box-shadow: 0 0 15px #ff3333;
+      /* Efeito de respiração suave na linha para guiar o usuário */
+      animation: pulse 1.5s infinite ease-in-out; 
+    }
+
+    /* Amarelo: Código Lido com Sucesso */
+    .guide-line.success {
+      background-color: #ffcc00;
+      box-shadow: 0 0 20px #ffcc00;
+      animation: none;
+    }
+
+    @keyframes pulse {
+      0% { opacity: 0.6; }
+      50% { opacity: 1; }
+      100% { opacity: 0.6; }
+    }
+
+    /* Container de resultados */
+    .result-container {
+      margin-top: 25px;
+      padding: 15px 25px;
+      border-radius: 8px;
+      background-color: #1e1e1e;
+      border: 1px solid #333;
+      text-align: center;
+      width: 100%;
+      max-width: 450px;
+      box-sizing: border-box;
+    }
+
+    .product-id {
+      font-size: 1.4rem;
+      font-weight: bold;
+      color: #ffcc00;
+      margin-top: 5px;
+      letter-spacing: 2px;
+    }
+
+    .btn-reset {
+      margin-top: 15px;
+      padding: 10px 20px;
+      background-color: #333;
+      color: #fff;
+      border: none;
+      border-radius: 6px;
+      font-weight: bold;
+      cursor: pointer;
+      transition: background-color 0.2s;
+    }
+
+    .btn-reset:hover {
+      background-color: #444;
+    }
+  </style>
+</head>
+<body>
+
+  <h2>Escaneamento de Produto</h2>
+  <p class="subtitle">Centralize o código de barras dentro do retângulo e alinhe-o com a linha guia</p>
+
+  <div class="scanner-wrapper">
+    <!-- Renderizador da Câmera -->
+    <div id="reader"></div>
+    
+    <!-- Máscara de foco sobreposta -->
+    <div class="scanner-overlay">
+      <div class="target-box">
+        <!-- Cantos complementares do retângulo -->
+        <div class="corner-top-right"></div>
+        <div class="corner-bottom-left"></div>
+        
+        <!-- Linha guia dentro do escopo do retângulo -->
+        <div id="laser-line" class="guide-line searching"></div>
+      </div>
+    </div>
+  </div>
+
+  <div class="result-container">
+    <div>ID do Produto Lido (Código):</div>
+    <div id="product-id-display" class="product-id">Nenhum código lido</div>
+    <button class="btn-reset" onclick="restartScanner()">Escanear Outro Produto</button>
+  </div>
+
+  <script>
+    let html5QrcodeScanner;
+    const laserLine = document.getElementById('laser-line');
+    const productIdDisplay = document.getElementById('product-id-display');
+    let isDecoded = false; 
+
+    // Configuração com área de leitura combinada ao retângulo visual
+    const config = { 
+      fps: 20, 
+      qrbox: { width: 350, height: 150 }, // Caixa de corte combina perfeitamente com o .target-box CSS
+      aspectRatio: 1.333334,
+      formatsToSupport: [ 
+        Html5QrcodeSupportedFormats.EAN_13, 
+        Html5QrcodeSupportedFormats.EAN_8, 
+        Html5QrcodeSupportedFormats.CODE_128, 
+        Html5QrcodeSupportedFormats.UPC_A,
+        Html5QrcodeSupportedFormats.UPC_E,
+        Html5QrcodeSupportedFormats.CODE_39
+      ]
+    };
+
+    function startScanner() {
+      isDecoded = false;
+      laserLine.className = 'guide-line searching';
+
+      html5QrcodeScanner = new Html5Qrcode("reader");
+      
+      html5QrcodeScanner.start(
+        { facingMode: "environment" }, 
+        config,
+        onScanSuccess,
+        onScanFailure
+      ).catch(err => {
+        console.error("Erro ao iniciar a câmera: ", err);
+        productIdDisplay.textContent = "Erro ao acessar a webcam.";
+      });
+    }
+
+    function onScanSuccess(decodedText, decodedResult) {
+      if (isDecoded) return; 
+      isDecoded = true; 
+
+      // Altera a cor para amarelo indicando sucesso
+      laserLine.className = 'guide-line success';
+      productIdDisplay.textContent = decodedText;
+
+      // Desliga a câmera de forma limpa
+      html5QrcodeScanner.stop().catch(err => {
+        console.warn("Erro ao parar a câmera: ", err);
+      });
+    }
+
+    function onScanFailure(error) {
+      if (isDecoded) return;
+
+      if (!laserLine.classList.contains('searching')) {
+        laserLine.className = 'guide-line searching';
+      }
+    }
+
+    function restartScanner() {
+      productIdDisplay.textContent = "Nenhum código lido";
+      if (html5QrcodeScanner) {
+        html5QrcodeScanner.stop().then(() => {
+          startScanner();
+        }).catch(() => {
+          startScanner();
+        });
+      } else {
+        startScanner();
+      }
+    }
+
+    window.addEventListener('DOMContentLoaded', startScanner);
+  </script>
+</body>
+</html>
