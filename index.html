@@ -1,308 +1,1009 @@
 <!DOCTYPE html>
 <html lang="pt-BR">
 <head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Leitor de Produto via Webcam</title>
-  
-  <!-- Biblioteca de escaneamento via CDN -->
-  <script src="https://unpkg.com/html5-qrcode" type="text/javascript"></script>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Dashboard & Cadastro de Produtos</title>
+    <!-- Lucide Icons para ícones modernos -->
+    <script src="https://unpkg.com/lucide@latest"></script>
+    <!-- Chart.js para o gráfico de categorias do relatório -->
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <!-- Html5-Qrcode CDN para leitura de código de barras e QR Code via câmera -->
+    <script src="https://unpkg.com/html5-qrcode"></script>
+    <style>
+        /* --- VARIÁVEIS DE ESTILO (TEMA DARK/MODERNO) --- */
+        :root {
+            --bg-primary: #0f172a;
+            --bg-secondary: #1e293b;
+            --bg-tertiary: #334155;
+            --text-primary: #f8fafc;
+            --text-secondary: #94a3b8;
+            --accent: #3b82f6;
+            --accent-hover: #2563eb;
+            --danger: #ef4444;
+            --danger-hover: #dc2626;
+            --success: #10b981;
+            --success-hover: #059669;
+            --border-radius: 8px;
+            --transition: all 0.3s ease;
+        }
 
-  <style>
-    body {
-      font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
-      background-color: #121212;
-      color: #e0e0e0;
-      display: flex;
-      flex-direction: column;
-      align-items: center;
-      justify-content: center;
-      min-height: 100vh;
-      margin: 0;
-      padding: 20px;
-    }
+        /* --- RESET & CONFIGURAÇÕES GERAIS --- */
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+            font-family: 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
+        }
 
-    h2 {
-      margin-bottom: 5px;
-      color: #ffffff;
-    }
+        body {
+            background-color: var(--bg-primary);
+            color: var(--text-primary);
+            min-height: 100vh;
+            padding: 20px;
+            display: flex;
+            justify-content: center;
+        }
 
-    .subtitle {
-      color: #888;
-      margin-bottom: 25px;
-      text-align: center;
-      max-width: 400px;
-    }
+        .container {
+            width: 100%;
+            max-width: 1200px;
+            display: flex;
+            flex-direction: column;
+            gap: 24px;
+        }
 
-    /* Container do scanner */
-    .scanner-wrapper {
-      position: relative;
-      width: 100%;
-      max-width: 500px;
-      aspect-ratio: 4 / 3;
-      border-radius: 12px;
-      overflow: hidden;
-      border: 3px solid #333;
-      background-color: #000;
-      box-shadow: 0 10px 30px rgba(0, 0, 0, 0.5);
-    }
+        /* --- HEADER --- */
+        header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            border-bottom: 1px solid var(--bg-tertiary);
+            padding-bottom: 16px;
+        }
 
-    #reader {
-      width: 100% !important;
-      height: 100% !important;
-      border: none !important;
-    }
+        header h1 {
+            font-size: 1.8rem;
+            font-weight: 600;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
 
-    #reader * {
-      border: none !important;
-    }
+        header h1 i {
+            color: var(--accent);
+        }
 
-    /* --- MÁSCARA E RETÂNGULO DE ORIENTAÇÃO --- */
-    .scanner-overlay {
-      position: absolute;
-      top: 0;
-      left: 0;
-      width: 100%;
-      height: 100%;
-      z-index: 50;
-      pointer-events: none;
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      /* Escurece as bordas externas para focar no centro */
-      background: rgba(0, 0, 0, 0.4); 
-    }
+        /* --- LAYOUT PRINCIPAL (GRID) --- */
+        .main-layout {
+            display: grid;
+            grid-template-columns: 1fr;
+            gap: 24px;
+        }
 
-    /* O Retângulo Guia */
-    .target-box {
-      position: relative;
-      width: 350px; /* Largura ideal para o código de barras */
-      height: 150px; /* Altura ideal para o código de barras */
-      border-radius: 8px;
-      box-shadow: 0 0 0 9999px rgba(0, 0, 0, 0.5); /* Recorte escuro ao redor */
-      transition: border-color 0.2s ease;
-    }
+        @media (min-width: 992px) {
+            .main-layout {
+                grid-template-columns: 350px 1fr;
+            }
+        }
 
-    /* Cantoneiras para destacar visualmente o retângulo */
-    .target-box::before, .target-box::after {
-      content: '';
-      position: absolute;
-      width: 20px;
-      height: 20px;
-      pointer-events: none;
-    }
+        /* --- CARDS & PAINÉIS --- */
+        .card {
+            background-color: var(--bg-secondary);
+            border-radius: var(--border-radius);
+            padding: 20px;
+            box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06);
+            border: 1px solid rgba(255, 255, 255, 0.05);
+        }
 
-    /* Cantos esquerdos (superior e inferior) */
-    .target-box::before {
-      top: -2px;
-      left: -2px;
-      border-top: 4px solid #fff;
-      border-left: 4px solid #fff;
-    }
+        .card-title {
+            font-size: 1.2rem;
+            font-weight: 600;
+            margin-bottom: 20px;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            border-bottom: 1px solid var(--bg-tertiary);
+            padding-bottom: 10px;
+        }
 
-    /* Cantos direitos (superior e inferior) */
-    .target-box::after {
-      bottom: -2px;
-      right: -2px;
-      border-bottom: 4px solid #fff;
-      border-right: 4px solid #fff;
-    }
+        /* --- FORMULÁRIO --- */
+        .form-group {
+            margin-bottom: 16px;
+        }
 
-    /* Adicionando cantoneiras adicionais */
-    .corner-top-right {
-      position: absolute;
-      top: -2px;
-      right: -2px;
-      width: 20px;
-      height: 20px;
-      border-top: 4px solid #fff;
-      border-right: 4px solid #fff;
-    }
+        .form-group label {
+            display: block;
+            font-size: 0.85rem;
+            color: var(--text-secondary);
+            margin-bottom: 6px;
+            font-weight: 500;
+        }
 
-    .corner-bottom-left {
-      position: absolute;
-      bottom: -2px;
-      left: -2px;
-      width: 20px;
-      height: 20px;
-      border-bottom: 4px solid #fff;
-      border-left: 4px solid #fff;
-    }
+        .input-control {
+            width: 100%;
+            background-color: var(--bg-tertiary);
+            border: 1px solid transparent;
+            color: var(--text-primary);
+            padding: 10px 12px;
+            border-radius: var(--border-radius);
+            font-size: 0.95rem;
+            transition: var(--transition);
+        }
 
-    /* Linha de Orientação Dinâmica (dentro do retângulo) */
-    .guide-line {
-      position: absolute;
-      top: 50%;
-      left: 5%;
-      width: 90%;
-      height: 4px;
-      z-index: 100;
-      transform: translateY(-50%);
-      border-radius: 2px;
-      transition: background-color 0.15s ease, box-shadow 0.15s ease;
-    }
+        .input-control:focus {
+            outline: none;
+            border-color: var(--accent);
+            box-shadow: 0 0 0 2px rgba(59, 130, 246, 0.3);
+        }
 
-    /* Vermelho: Procurando código */
-    .guide-line.searching {
-      background-color: #ff3333;
-      box-shadow: 0 0 15px #ff3333;
-      /* Efeito de respiração suave na linha para guiar o usuário */
-      animation: pulse 1.5s infinite ease-in-out; 
-    }
+        /* Grupos de Botões Acoplados a Inputs */
+        .input-group-append {
+            display: flex;
+            gap: 8px;
+        }
 
-    /* Amarelo: Código Lido com Sucesso */
-    .guide-line.success {
-      background-color: #ffcc00;
-      box-shadow: 0 0 20px #ffcc00;
-      animation: none;
-    }
+        .btn-append {
+            background-color: var(--accent);
+            color: var(--text-primary);
+            border: none;
+            border-radius: var(--border-radius);
+            padding: 0 12px;
+            cursor: pointer;
+            transition: var(--transition);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
 
-    @keyframes pulse {
-      0% { opacity: 0.6; }
-      50% { opacity: 1; }
-      100% { opacity: 0.6; }
-    }
+        .btn-append:hover {
+            background-color: var(--accent-hover);
+        }
 
-    /* Container de resultados */
-    .result-container {
-      margin-top: 25px;
-      padding: 15px 25px;
-      border-radius: 8px;
-      background-color: #1e1e1e;
-      border: 1px solid #333;
-      text-align: center;
-      width: 100%;
-      max-width: 450px;
-      box-sizing: border-box;
-    }
+        .btn-append-success {
+            background-color: var(--success);
+        }
+        .btn-append-success:hover {
+            background-color: var(--success-hover);
+        }
 
-    .product-id {
-      font-size: 1.4rem;
-      font-weight: bold;
-      color: #ffcc00;
-      margin-top: 5px;
-      letter-spacing: 2px;
-    }
+        /* --- SISTEMA DE BUSCA --- */
+        .search-container {
+            display: flex;
+            gap: 10px;
+            margin-bottom: 20px;
+        }
 
-    .btn-reset {
-      margin-top: 15px;
-      padding: 10px 20px;
-      background-color: #333;
-      color: #fff;
-      border: none;
-      border-radius: 6px;
-      font-weight: bold;
-      cursor: pointer;
-      transition: background-color 0.2s;
-    }
+        .search-box-wrapper {
+            position: relative;
+            flex: 1;
+        }
 
-    .btn-reset:hover {
-      background-color: #444;
-    }
-  </style>
+        .search-icon {
+            position: absolute;
+            left: 12px;
+            top: 50%;
+            transform: translateY(-50%);
+            color: var(--text-secondary);
+            pointer-events: none;
+        }
+
+        .search-input {
+            padding-left: 40px;
+            background-color: var(--bg-tertiary);
+        }
+
+        /* --- BOTÕES --- */
+        .btn {
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            gap: 8px;
+            padding: 10px 16px;
+            border: none;
+            border-radius: var(--border-radius);
+            font-size: 0.95rem;
+            font-weight: 500;
+            cursor: pointer;
+            transition: var(--transition);
+            width: 100%;
+        }
+
+        .btn-primary {
+            background-color: var(--accent);
+            color: var(--text-primary);
+        }
+
+        .btn-primary:hover {
+            background-color: var(--accent-hover);
+        }
+
+        .btn-secondary {
+            background-color: var(--bg-tertiary);
+            color: var(--text-primary);
+            border: 1px solid rgba(255,255,255,0.1);
+        }
+
+        .btn-secondary:hover {
+            background-color: var(--bg-secondary);
+        }
+
+        /* --- CARDS DE MÉTRICAS (GRID SUPERIOR) --- */
+        .metrics-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+            gap: 16px;
+            margin-bottom: 20px;
+        }
+
+        .metric-card {
+            background-color: var(--bg-secondary);
+            padding: 16px;
+            border-radius: var(--border-radius);
+            border-left: 4px solid var(--accent);
+            display: flex;
+            flex-direction: column;
+            gap: 8px;
+        }
+
+        .metric-title {
+            font-size: 0.85rem;
+            color: var(--text-secondary);
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+        }
+
+        .metric-value {
+            font-size: 1.8rem;
+            font-weight: bold;
+        }
+
+        /* --- TABELA DE PRODUTOS --- */
+        .table-responsive {
+            width: 100%;
+            overflow-x: auto;
+            border-radius: var(--border-radius);
+            border: 1px solid var(--bg-tertiary);
+        }
+
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            text-align: left;
+            font-size: 0.95rem;
+        }
+
+        th, td {
+            padding: 12px 16px;
+            border-bottom: 1px solid var(--bg-tertiary);
+        }
+
+        th {
+            background-color: #1e293b90;
+            color: var(--text-secondary);
+            font-weight: 600;
+        }
+
+        tr:last-child td {
+            border-bottom: none;
+        }
+
+        tr:hover td {
+            background-color: rgba(255, 255, 255, 0.02);
+            cursor: pointer;
+        }
+
+        /* --- AÇÕES DA TABELA --- */
+        .actions-cell {
+            display: flex;
+            gap: 8px;
+        }
+
+        .btn-action {
+            background: none;
+            border: none;
+            color: var(--text-secondary);
+            cursor: pointer;
+            padding: 6px;
+            border-radius: 4px;
+            transition: var(--transition);
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .btn-action:hover {
+            background-color: var(--bg-tertiary);
+        }
+
+        .btn-edit:hover {
+            color: var(--accent);
+        }
+
+        .btn-delete:hover {
+            color: var(--danger);
+        }
+
+        /* --- MODAIS --- */
+        .modal-overlay {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background-color: rgba(15, 23, 42, 0.8);
+            backdrop-filter: blur(4px);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            z-index: 1000;
+            opacity: 0;
+            pointer-events: none;
+            transition: var(--transition);
+        }
+
+        .modal-overlay.active {
+            opacity: 1;
+            pointer-events: auto;
+        }
+
+        .modal-container {
+            background-color: var(--bg-secondary);
+            border-radius: var(--border-radius);
+            width: 90%;
+            max-width: 500px;
+            padding: 24px;
+            border: 1px solid var(--bg-tertiary);
+            transform: translateY(-20px);
+            transition: var(--transition);
+            position: relative;
+        }
+
+        .modal-overlay.active .modal-container {
+            transform: translateY(0);
+        }
+
+        .modal-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 20px;
+            border-bottom: 1px solid var(--bg-tertiary);
+            padding-bottom: 12px;
+        }
+
+        .modal-close {
+            background: none;
+            border: none;
+            color: var(--text-secondary);
+            cursor: pointer;
+            transition: var(--transition);
+        }
+
+        .modal-close:hover {
+            color: var(--danger);
+        }
+
+        /* Detalhes da Ficha Técnica */
+        .tech-sheet {
+            display: grid;
+            grid-template-columns: 1fr;
+            gap: 16px;
+        }
+
+        .tech-field {
+            border-bottom: 1px solid rgba(255, 255, 255, 0.05);
+            padding-bottom: 8px;
+        }
+
+        .tech-field-label {
+            font-size: 0.8rem;
+            color: var(--text-secondary);
+            text-transform: uppercase;
+            margin-bottom: 4px;
+        }
+
+        .tech-field-value {
+            font-size: 1.05rem;
+            font-weight: 500;
+        }
+
+        /* Container do Gráfico */
+        .chart-container {
+            position: relative;
+            height: 220px;
+            width: 100%;
+            margin-top: 15px;
+        }
+
+        /* --- SCANNER CONTAINER --- */
+        .scanner-view {
+            width: 100%;
+            border-radius: var(--border-radius);
+            overflow: hidden;
+            background: #000;
+            border: 2px solid var(--accent);
+            margin-bottom: 15px;
+        }
+
+        /* --- NOTIFICAÇÃO TOAST --- */
+        #toast {
+            position: fixed;
+            bottom: 20px;
+            right: 20px;
+            background-color: var(--success);
+            color: var(--text-primary);
+            padding: 12px 24px;
+            border-radius: var(--border-radius);
+            box-shadow: 0 10px 15px -3px rgba(0,0,0,0.3);
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            transform: translateY(150%);
+            transition: var(--transition);
+            z-index: 2000;
+            font-weight: 500;
+        }
+
+        #toast.active {
+            transform: translateY(0);
+        }
+    </style>
 </head>
 <body>
 
-  <h2>Escaneamento de Produto</h2>
-  <p class="subtitle">Centralize o código de barras dentro do retângulo e alinhe-o com a linha guia</p>
+    <div class="container">
+        <!-- HEADER -->
+        <header>
+            <h1><i data-lucide="package"></i> InventoryManager</h1>
+            <button class="btn btn-secondary" style="width: auto;" onclick="openGeneralReport()">
+                <i data-lucide="bar-chart-3"></i> Relatório Geral
+            </button>
+        </header>
 
-  <div class="scanner-wrapper">
-    <!-- Renderizador da Câmera -->
-    <div id="reader"></div>
-    
-    <!-- Máscara de foco sobreposta -->
-    <div class="scanner-overlay">
-      <div class="target-box">
-        <!-- Cantos complementares do retângulo -->
-        <div class="corner-top-right"></div>
-        <div class="corner-bottom-left"></div>
-        
-        <!-- Linha guia dentro do escopo do retângulo -->
-        <div id="laser-line" class="guide-line searching"></div>
-      </div>
+        <!-- LAYOUT PRINCIPAL -->
+        <div class="main-layout">
+            
+            <!-- FORMULÁRIO DE CADASTRO -->
+            <section class="card">
+                <h2 class="card-title" id="form-title">
+                    <i data-lucide="plus-circle"></i> Cadastrar Produto
+                </h2>
+                <form id="product-form" onsubmit="handleFormSubmit(event)">
+                    
+                    <div class="form-group">
+                        <label for="prod-barcode">Código de Barras ou QR Code *</label>
+                        <div class="input-group-append">
+                            <input type="text" id="prod-barcode" class="input-control" required placeholder="Código do produto" title="Insira um código de barras ou QR Code válido">
+                            <button type="button" class="btn-append btn-append-success" onclick="startCamScanner('form')" title="Ler via Câmera/Webcam">
+                                <i data-lucide="camera"></i>
+                            </button>
+                            <button type="button" id="btn-gen-barcode" class="btn-append" onclick="generateRandomBarcode()" title="Gerar Código Aleatório">
+                                <i data-lucide="scan-line"></i>
+                            </button>
+                        </div>
+                    </div>
+
+                    <div class="form-group">
+                        <label for="prod-name">Nome do Produto *</label>
+                        <input type="text" id="prod-name" class="input-control" required placeholder="Ex: Teclado Mecânico">
+                    </div>
+
+                    <div class="form-group">
+                        <label for="prod-maker">Fabricante *</label>
+                        <input type="text" id="prod-maker" class="input-control" required placeholder="Ex: Logitech">
+                    </div>
+
+                    <div class="form-group">
+                        <label for="prod-category">Categoria *</label>
+                        <select id="prod-category" class="input-control" required>
+                            <option value="" disabled selected>Selecione uma categoria</option>
+                            <option value="Eletrônicos">Eletrônicos</option>
+                            <option value="Alimentos">Alimentos</option>
+                            <option value="Vestuário">Vestuário</option>
+                            <option value="Limpeza">Limpeza</option>
+                            <option value="Outros">Outros</option>
+                        </select>
+                    </div>
+
+                    <div class="form-group">
+                        <label for="prod-qty">Quantidade em Estoque *</label>
+                        <input type="number" id="prod-qty" class="input-control" min="0" required placeholder="Ex: 15">
+                    </div>
+
+                    <div style="display: flex; gap: 10px; margin-top: 24px;">
+                        <button type="button" id="btn-cancel" class="btn btn-secondary" style="display: none;" onclick="resetFormState()">
+                            Cancelar
+                        </button>
+                        <button type="submit" id="btn-submit" class="btn btn-primary">
+                            <i data-lucide="save"></i> Salvar Produto
+                        </button>
+                    </div>
+                </form>
+            </section>
+
+            <!-- PAINEL DA TABELA -->
+            <main class="card">
+                <h2 class="card-title">
+                    <i data-lucide="list"></i> Produtos Cadastrados
+                </h2>
+                
+                <!-- MÉTRICAS RÁPIDAS -->
+                <div class="metrics-grid">
+                    <div class="metric-card">
+                        <span class="metric-title">Tipos de Itens</span>
+                        <span class="metric-value" id="metric-types">0</span>
+                    </div>
+                    <div class="metric-card" style="border-left-color: var(--success);">
+                        <span class="metric-title">Total de Itens</span>
+                        <span class="metric-value" id="metric-total-items">0</span>
+                    </div>
+                </div>
+
+                <!-- CAMPO DE BUSCA FLEXÍVEL (WEB-CAM OU TEXTO) -->
+                <div class="search-container">
+                    <div class="search-box-wrapper">
+                        <i data-lucide="search" class="search-icon"></i>
+                        <input type="text" id="table-search" class="input-control search-input" placeholder="Buscar por Nome, Código de Barras ou QR Code..." oninput="filterProducts(this.value)">
+                    </div>
+                    <button type="button" class="btn btn-primary" style="width: auto; padding: 10px 14px;" onclick="startCamScanner('search')" title="Consultar via Webcam (QR / Código de Barras)">
+                        <i data-lucide="camera"></i> Consultar Câmera
+                    </button>
+                </div>
+
+                <div class="table-responsive">
+                    <table>
+                        <thead>
+                            <tr>
+                                <th>Código/QR Code</th>
+                                <th>Produto</th>
+                                <th>Fabricante</th>
+                                <th>Categoria</th>
+                                <th>Qtd.</th>
+                                <th>Ações</th>
+                            </tr>
+                        </thead>
+                        <tbody id="products-table-body">
+                            <!-- Injetado dinamicamente -->
+                        </tbody>
+                    </table>
+                </div>
+            </main>
+        </div>
     </div>
-  </div>
 
-  <div class="result-container">
-    <div>ID do Produto Lido (Código):</div>
-    <div id="product-id-display" class="product-id">Nenhum código lido</div>
-    <button class="btn-reset" onclick="restartScanner()">Escanear Outro Produto</button>
-  </div>
+    <!-- MODAL: LEITOR DE CÂMERA (WEB-CAM SCANNER) -->
+    <div class="modal-overlay" id="modal-scanner">
+        <div class="modal-container">
+            <div class="modal-header">
+                <h3><i data-lucide="scan" style="display: inline-block; vertical-align: middle;"></i> Escanear Código</h3>
+                <button class="modal-close" onclick="stopCamScanner()">
+                    <i data-lucide="x"></i>
+                </button>
+            </div>
+            <div>
+                <p style="font-size: 0.85rem; color: var(--text-secondary); margin-bottom: 12px; text-align: center;">
+                    Posicione o Código de Barras ou QR Code de frente para a câmera.
+                </p>
+                <div id="reader" class="scanner-view"></div>
+                <button class="btn btn-secondary" onclick="stopCamScanner()">
+                    <i data-lucide="square"></i> Parar Câmera
+                </button>
+            </div>
+        </div>
+    </div>
 
-  <script>
-    let html5QrcodeScanner;
-    const laserLine = document.getElementById('laser-line');
-    const productIdDisplay = document.getElementById('product-id-display');
-    let isDecoded = false; 
+    <!-- MODAL: RELATÓRIO GERAL -->
+    <div class="modal-overlay" id="modal-general">
+        <div class="modal-container">
+            <div class="modal-header">
+                <h3><i data-lucide="bar-chart-2" style="display: inline-block; vertical-align: middle;"></i> Relatório Geral de Estoque</h3>
+                <button class="modal-close" onclick="closeModal('modal-general')">
+                    <i data-lucide="x"></i>
+                </button>
+            </div>
+            <div class="tech-sheet">
+                <div class="tech-field">
+                    <div class="tech-field-label">Total de Produtos Registrados</div>
+                    <div class="tech-field-value" id="rep-total-types">0</div>
+                </div>
+                <div class="tech-field">
+                    <div class="tech-field-label">Soma de Itens Físicos em Estoque</div>
+                    <div class="tech-field-value" id="rep-total-qty">0</div>
+                </div>
+                <div>
+                    <div class="tech-field-label">Distribuição por Categoria</div>
+                    <div class="chart-container">
+                        <canvas id="categoryChart"></canvas>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
 
-    // Configuração com área de leitura combinada ao retângulo visual
-    const config = { 
-      fps: 20, 
-      qrbox: { width: 350, height: 150 }, // Caixa de corte combina perfeitamente com o .target-box CSS
-      aspectRatio: 1.333334,
-      formatsToSupport: [ 
-        Html5QrcodeSupportedFormats.EAN_13, 
-        Html5QrcodeSupportedFormats.EAN_8, 
-        Html5QrcodeSupportedFormats.CODE_128, 
-        Html5QrcodeSupportedFormats.UPC_A,
-        Html5QrcodeSupportedFormats.UPC_E,
-        Html5QrcodeSupportedFormats.CODE_39
-      ]
-    };
+    <!-- MODAL: FICHA TÉCNICA DO PRODUTO -->
+    <div class="modal-overlay" id="modal-product">
+        <div class="modal-container">
+            <div class="modal-header">
+                <h3><i data-lucide="file-text" style="display: inline-block; vertical-align: middle;"></i> Ficha Técnica</h3>
+                <button class="modal-close" onclick="closeModal('modal-product')">
+                    <i data-lucide="x"></i>
+                </button>
+            </div>
+            <div class="tech-sheet" id="tech-sheet-content">
+                <!-- Injetado dinamicamente -->
+            </div>
+        </div>
+    </div>
 
-    function startScanner() {
-      isDecoded = false;
-      laserLine.className = 'guide-line searching';
+    <!-- TOAST (ALERTAS DE SISTEMA) -->
+    <div id="toast">
+        <i data-lucide="check-circle-2"></i> <span id="toast-message">Operação realizada!</span>
+    </div>
 
-      html5QrcodeScanner = new Html5Qrcode("reader");
-      
-      html5QrcodeScanner.start(
-        { facingMode: "environment" }, 
-        config,
-        onScanSuccess,
-        onScanFailure
-      ).catch(err => {
-        console.error("Erro ao iniciar a câmera: ", err);
-        productIdDisplay.textContent = "Erro ao acessar a webcam.";
-      });
-    }
+    <!-- SCRIPTS DE SISTEMA -->
+    <script>
+        // --- ESTADO GLOBAL DA SPA ---
+        let products = JSON.parse(localStorage.getItem('db_products_barcode')) || [];
+        let isEditing = false;
+        let editingBarcode = null;
+        let chartInstance = null;
+        let currentSearchQuery = "";
+        
+        // Instância global do scanner da câmera
+        let html5QrCodeScanner = null;
+        let scannerTarget = ""; // "form" ou "search"
 
-    function onScanSuccess(decodedText, decodedResult) {
-      if (isDecoded) return; 
-      isDecoded = true; 
+        // Inicializador de ícones e dados iniciais
+        lucide.createIcons();
+        generateRandomBarcode(); 
+        renderProducts();
 
-      // Altera a cor para amarelo indicando sucesso
-      laserLine.className = 'guide-line success';
-      productIdDisplay.textContent = decodedText;
+        // --- CRUD OPERAÇÕES ---
 
-      // Desliga a câmera de forma limpa
-      html5QrcodeScanner.stop().catch(err => {
-        console.warn("Erro ao parar a câmera: ", err);
-      });
-    }
+        // Renderiza a lista de produtos na tabela e atualiza os micro-cards de métricas
+        function renderProducts() {
+            const tbody = document.getElementById('products-table-body');
+            tbody.innerHTML = '';
 
-    function onScanFailure(error) {
-      if (isDecoded) return;
+            // Filtragem local baseada na busca por nome ou código/QR Code
+            const filteredProducts = products.filter(product => {
+                const query = currentSearchQuery.toLowerCase().trim();
+                return product.barcode.toLowerCase().includes(query) || 
+                       product.name.toLowerCase().includes(query);
+            });
 
-      if (!laserLine.classList.contains('searching')) {
-        laserLine.className = 'guide-line searching';
-      }
-    }
+            if (filteredProducts.length === 0) {
+                tbody.innerHTML = `<tr><td colspan="6" style="text-align: center; color: var(--text-secondary); padding: 30px;">Nenhum produto correspondente encontrado.</td></tr>`;
+                updateMetrics(0, 0);
+                return;
+            }
 
-    function restartScanner() {
-      productIdDisplay.textContent = "Nenhum código lido";
-      if (html5QrcodeScanner) {
-        html5QrcodeScanner.stop().then(() => {
-          startScanner();
-        }).catch(() => {
-          startScanner();
-        });
-      } else {
-        startScanner();
-      }
-    }
+            let totalQty = 0;
 
-    window.addEventListener('DOMContentLoaded', startScanner);
-  </script>
+            filteredProducts.forEach(product => {
+                totalQty += parseInt(product.qty);
+                const tr = document.createElement('tr');
+                tr.innerHTML = `
+                    <td onclick="openProductReport('${product.barcode}')"><code>${product.barcode}</code></td>
+                    <td onclick="openProductReport('${product.barcode}')"><strong>${product.name}</strong></td>
+                    <td onclick="openProductReport('${product.barcode}')">${product.maker}</td>
+                    <td onclick="openProductReport('${product.barcode}')">${product.category}</td>
+                    <td onclick="openProductReport('${product.barcode}')">${product.qty}</td>
+                    <td class="actions-cell">
+                        <button class="btn-action btn-edit" onclick="startEdit('${product.barcode}')" title="Editar"><i data-lucide="pencil"></i></button>
+                        <button class="btn-action btn-delete" onclick="deleteProduct('${product.barcode}')" title="Excluir"><i data-lucide="trash-2"></i></button>
+                    </td>
+                `;
+                tbody.appendChild(tr);
+            });
+
+            const globalTotalQty = products.reduce((acc, curr) => acc + parseInt(curr.qty), 0);
+            updateMetrics(products.length, globalTotalQty);
+            lucide.createIcons();
+        }
+
+        // Função de disparo do input de pesquisa
+        function filterProducts(query) {
+            currentSearchQuery = query;
+            renderProducts();
+        }
+
+        // Atualização de métricas locais rápidas
+        function updateMetrics(types, total) {
+            document.getElementById('metric-types').innerText = types;
+            document.getElementById('metric-total-items').innerText = total;
+        }
+
+        // Submissão do Formulário (Salvar / Atualizar)
+        function handleFormSubmit(e) {
+            e.preventDefault();
+
+            const barcode = document.getElementById('prod-barcode').value.trim();
+            const name = document.getElementById('prod-name').value.trim();
+            const maker = document.getElementById('prod-maker').value.trim();
+            const category = document.getElementById('prod-category').value;
+            const qty = parseInt(document.getElementById('prod-qty').value);
+
+            if (isEditing) {
+                if (barcode !== editingBarcode && products.some(p => p.barcode === barcode)) {
+                    showToast('Esse Código/QR já está cadastrado em outro produto!', 'var(--danger)');
+                    return;
+                }
+
+                const index = products.findIndex(p => p.barcode === editingBarcode);
+                if (index !== -1) {
+                    products[index] = { barcode, name, maker, category, qty };
+                    showToast('Produto atualizado com sucesso!', 'var(--success)');
+                }
+                resetFormState();
+            } else {
+                if (products.some(p => p.barcode === barcode)) {
+                    showToast('Este Código/QR já existe no sistema!', 'var(--danger)');
+                    return;
+                }
+
+                const newProduct = { barcode, name, maker, category, qty };
+                products.push(newProduct);
+                showToast('Produto cadastrado com sucesso!', 'var(--success)');
+                resetFormState();
+            }
+
+            saveToLocalStorage();
+            renderProducts();
+        }
+
+        // Transiciona o formulário para estado de edição
+        function startEdit(barcode) {
+            const product = products.find(p => p.barcode === barcode);
+            if (!product) return;
+
+            isEditing = true;
+            editingBarcode = barcode;
+
+            document.getElementById('form-title').innerHTML = `<i data-lucide="pencil-line"></i> Editar Produto`;
+            
+            document.getElementById('prod-barcode').value = product.barcode;
+            document.getElementById('prod-name').value = product.name;
+            document.getElementById('prod-maker').value = product.maker;
+            document.getElementById('prod-category').value = product.category;
+            document.getElementById('prod-qty').value = product.qty;
+
+            const btnSubmit = document.getElementById('btn-submit');
+            btnSubmit.innerHTML = `<i data-lucide="check"></i> Atualizar`;
+
+            document.getElementById('btn-cancel').style.display = 'inline-flex';
+            lucide.createIcons();
+            
+            document.getElementById('product-form').scrollIntoView({ behavior: 'smooth' });
+        }
+
+        // Volta o formulário para o estado inicial de cadastro
+        function resetFormState() {
+            isEditing = false;
+            editingBarcode = null;
+
+            document.getElementById('form-title').innerHTML = `<i data-lucide="plus-circle"></i> Cadastrar Produto`;
+            document.getElementById('product-form').reset();
+            
+            const btnSubmit = document.getElementById('btn-submit');
+            btnSubmit.innerHTML = `<i data-lucide="save"></i> Salvar Produto`;
+            
+            document.getElementById('btn-cancel').style.display = 'none';
+            generateRandomBarcode(); 
+            lucide.createIcons();
+        }
+
+        // DELETE
+        function deleteProduct(barcode) {
+            const product = products.find(p => p.barcode === barcode);
+            if (!product) return;
+
+            if (confirm(`Tem certeza que deseja excluir "${product.name}" (${barcode})?`)) {
+                products = products.filter(p => p.barcode !== barcode);
+                saveToLocalStorage();
+                renderProducts();
+                showToast('Produto removido com sucesso.', 'var(--danger)');
+                if (isEditing && editingBarcode === barcode) {
+                    resetFormState();
+                }
+            }
+        }
+
+        function saveToLocalStorage() {
+            localStorage.setItem('db_products_barcode', JSON.stringify(products));
+        }
+
+        // --- INTEGRAÇÃO DO SCANNER DA WEBCAM (HTML5-QRCODE) ---
+
+        // Inicia a webcam e abre o modal do scanner
+        function startCamScanner(target) {
+            scannerTarget = target; // Define se vamos preencher o formulário ou fazer busca direta
+            openModal('modal-scanner');
+
+            // Configurações do Scanner (Lê códigos de barra normais de 1D e QR Codes 2D)
+            html5QrCodeScanner = new Html5Qrcode("reader");
+            
+            const config = { 
+                fps: 15, 
+                qrbox: { width: 250, height: 150 }, // Formato otimizado para barras e QR
+                aspectRatio: 1.0
+            };
+
+            // Inicia capturando a câmera traseira do celular (environment), ou a webcam padrão se não disponível
+            html5QrCodeScanner.start(
+                { facingMode: "environment" }, 
+                config, 
+                onScanSuccess, 
+                onScanError
+            ).catch(err => {
+                console.error("Erro ao acessar câmera: ", err);
+                showToast("Não foi possível acessar a câmera.", "var(--danger)");
+                stopCamScanner();
+            });
+        }
+
+        // Ação executada ao ler com sucesso
+        function onScanSuccess(decodedText, decodedResult) {
+            stopCamScanner(); // Desativa a câmera para economizar recursos e fechar modal
+
+            if (scannerTarget === "form") {
+                // Preenche o campo de cadastro
+                document.getElementById('prod-barcode').value = decodedText;
+                showToast(`Código capturado: ${decodedText}`, "var(--success)");
+            } else if (scannerTarget === "search") {
+                // Preenche o campo de busca e executa o filtro na tabela de imediato
+                const searchInput = document.getElementById('table-search');
+                searchInput.value = decodedText;
+                filterProducts(decodedText);
+                showToast(`Consulta concluída para: ${decodedText}`, "var(--accent)");
+            }
+        }
+
+        function onScanError(errorMessage) {
+            // Callback silencioso para evitar sobrecarga de logs durante o rastreamento em vídeo
+        }
+
+        // Desliga a webcam e encerra o fluxo de processamento
+        function stopCamScanner() {
+            closeModal('modal-scanner');
+            if (html5QrCodeScanner) {
+                html5QrCodeScanner.stop().then(() => {
+                    html5QrCodeScanner = null;
+                }).catch(err => {
+                    console.warn("Erro ao finalizar câmera de forma segura: ", err);
+                    html5QrCodeScanner = null;
+                });
+            }
+        }
+
+
+        // --- UTILITÁRIOS ---
+
+        // Gerador de código padrão EAN-13 fictício para facilitação de testes
+        function generateRandomBarcode() {
+            let code = "789"; 
+            for (let i = 0; i < 10; i++) {
+                code += Math.floor(Math.random() * 10);
+            }
+            document.getElementById('prod-barcode').value = code;
+            if (isEditing) {
+                showToast('Código alterado!', 'var(--accent)');
+            }
+        }
+
+        // Mostra mensagens flutuantes (Toasts)
+        function showToast(msg, color) {
+            const toast = document.getElementById('toast');
+            const toastMsg = document.getElementById('toast-message');
+            
+            toast.style.backgroundColor = color;
+            toastMsg.innerText = msg;
+            toast.classList.add('active');
+
+            setTimeout(() => {
+                toast.classList.remove('active');
+            }, 3000);
+        }
+
+        // --- SISTEMA DE MODAIS & RELATÓRIOS ---
+
+        function openModal(modalId) {
+            document.getElementById(modalId).classList.add('active');
+        }
+
+        function closeModal(modalId) {
+            document.getElementById(modalId).classList.remove('active');
+        }
+
+        // MODAL INDIVIDUAL: Ficha Técnica do Produto
+        function openProductReport(barcode) {
+            const product = products.find(p => p.barcode === barcode);
+            if (!product) return;
+
+            const container = document.getElementById('tech-sheet-content');
+            container.innerHTML = `
+                <div class="tech-field">
+                    <div class="tech-field-label">Código de Barras / QR Code</div>
+                    <div class="tech-field-value"><code>${product.barcode}</code></div>
+                </div>
+                <div class="tech-field">
+                    <div class="tech-field-label">Nome do Item</div>
+                    <div class="tech-field-value">${product.name}</div>
+                </div>
+                <div class="tech-field">
+                    <div class="tech-field-label">Fabricante</div>
+                    <div class="tech-field-value">${product.maker}</div>
+                </div>
+                <div class="tech-field">
+                    <div class="tech-field-label">Grupo / Categoria</div>
+                    <div class="tech-field-value">${product.category}</div>
+                </div>
+                <div class="tech-field">
+                    <div class="tech-field-label">Disponibilidade em Estoque</div>
+                    <div class="tech-field-value" style="color: ${product.qty == 0 ? 'var(--danger)' : 'var(--success)'}">
+                        ${product.qty} unidades
+                    </div>
+                </div>
+            `;
+            openModal('modal-product');
+        }
+
+        // MODAL GERAL: Gráfico e Métricas Globais
+        function openGeneralReport() {
+            document.getElementById('rep-total-types').innerText = products.length;
+            
+            const totalQty = products.reduce((acc, curr) => acc + parseInt(curr.qty), 0);
+            document.getElementById('rep-total-qty').innerText = totalQty;
+
+            const categories = ['Eletrônicos', 'Alimentos', 'Vestuário', 'Limpeza', 'Outros'];
+            const dataCounts = categories.map(cat => {
+                return products
+                    .filter(p => p.category === cat)
+                    .reduce((acc, curr) => acc + parseInt(curr.qty), 0);
+            });
+
+            openModal('modal-general');
+
+            const ctx = document.getElementById('categoryChart').getContext('2d');
+            
+            if (chartInstance) {
+                chartInstance.destroy(); 
+            }
+
+            chartInstance = new Chart(ctx, {
+                type: 'doughnut',
+                data: {
+                    labels: categories,
+                    datasets: [{
+                        data: dataCounts,
+                        backgroundColor: [
+                            '#3b82f6', 
+                            '#10b981', 
+                            '#f59e0b', 
+                            '#ec4899', 
+                            '#64748b'  
+                        ],
+                        borderWidth: 0
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    plugins: {
+                        legend: {
+                            position: 'bottom',
+                            labels: {
+                                color: '#94a3b8',
+                                font: {
+                                    size: 11
+                                }
+                            }
+                        }
+                    }
+                }
+            });
+        }
+    </script>
 </body>
 </html>
